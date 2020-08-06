@@ -193,19 +193,19 @@ class _TestPage extends State<TestPage> {
               ],
             ),
           ),
-          Positioned(
-            top: 50,
-            left: 0,
-            right: MediaQuery.of(context).size.width * .25,
-            bottom: 50,
+          // Positioned(
+          //   top: 50,
+          //   left: 0,
+          //   right: MediaQuery.of(context).size.width * .25,
+          //   bottom: 50,
             
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: CustomPaint(
-                painter: MyPainter(widget.state),
-              ),
-            ),
-          ),
+          //   child: Align(
+          //     alignment: Alignment.bottomCenter,
+          //     child: CustomPaint(
+          //       painter: MyPainter(widget.state),
+          //     ),
+          //   ),
+          // ),
 
           Positioned(
             top: 50,

@@ -11,9 +11,11 @@ Map<String, int> precedence = {
   '/': 2,
   '%': 3,
   '>': 4,
+  '>=': 4,
   '<': 4,
   '<=': 4,
   '==': 4,
+  '!=': 4,
 };
 
 HashSet<String> keywords = { 'func', 'while', 'if', 'for', 'return', 'in', 'print', 'else' } as HashSet<String>;

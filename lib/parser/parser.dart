@@ -70,7 +70,7 @@ class Parser {
             if (paramDepth == 0) break;
             ++_toP;
           }
-          if (_toP - 1 > _fromP) 
+          if (_toP - 1 >= _fromP) 
             params = parseParameters(tokens, _fromP, _toP - 1);
 
           output.add( ASTFunctionCall(functionName: functionName, argument: params) );
