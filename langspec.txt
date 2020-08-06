@@ -1,0 +1,15 @@
+
+func sort() : int {	
+	let x : int = 5;
+	
+	for i in 0..(n - 1) {
+		for j in 0..(n - i - 1) {
+			if get(array, j) > get(array, j + 1) {
+				swap(array, j, j + 1)
+				delay(1)
+			}
+		}
+	}
+	
+	return 0
+}
