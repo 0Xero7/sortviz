@@ -2,18 +2,12 @@ func fib ( i ) {
     if i == 0 { return 0 ; }
     if i == 1 { return 1 ; }
 
-    return fib ( i - 1 ) + fib ( i + 2 ) ;
+    return fib ( i - 1 ) + fib ( i - 2 ) ;
 }
 
 func sort ( ) {
-    x = 0 ;
-    y = 1 ;
-
-    print x ;
-    print y ;
-
-    for i in 0 .. 10 {
-        temp = fib ( i + 0 ) ;
-        print temp ;
+    for i in 2 .. 10 { 
+        x = fib ( i + 0 ) ;
+        print x ;
     }
 }

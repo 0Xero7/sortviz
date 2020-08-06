@@ -19,32 +19,32 @@ import 'package:sortviz/ast/types/astint.dart';
 import 'package:sortviz/ast/types/astvalue.dart';
 
 class Interpret {
-  static HashMap<String, ASTFunction> functions;
-  static HashMap<String, ASTIdentifier> identifiers;
+   HashMap<String, ASTFunction> functions;
+   HashMap<String, ASTIdentifier> identifiers;
 
   // flags
-  static bool continueFlag = false, breakFlag = false, returnFlag = false;
+   bool continueFlag = false, breakFlag = false, returnFlag = false;
   
   // use as stack
-  static ListQueue<dynamic> valueStack;
+   ListQueue<dynamic> valueStack;
 
   // return value stack
-  static ListQueue<dynamic> returnStack;
+   ListQueue<dynamic> returnStack;
 
-  static Type typeof(dynamic arg) => arg.runtimeType;
+   Type typeof(dynamic arg) => arg.runtimeType;
 
-  static void init() {
+   void init() {
     functions = HashMap<String, ASTFunction>();
     identifiers = HashMap<String, ASTIdentifier>();
     valueStack = ListQueue<dynamic>();
     returnStack = ListQueue<dynamic>();
   }
 
-  static void declaration(ASTDecl decl) {
+   void declaration(ASTDecl decl) {
     identifiers[decl.variableName] = ASTIdentifier(name: decl.variableName);
   }
 
-  static dynamic solve(ASTInt l, ASTInt r, String op) {
+   dynamic solve(ASTInt l, ASTInt r, String op) {
     switch (op) {
       case '+': return ASTInt(value: l.value + r.value);
       case '-': return ASTInt(value: l.value - r.value);
@@ -62,7 +62,7 @@ class Interpret {
     throw Exception('Unknown binary operator $op');
   }
 
-  static dynamic getValue(ASTValue value) {
+   dynamic getValue(ASTValue value) {
     switch (typeof(value)) {
       case ASTBinOp: return binop(value);
       case ASTIdentifier:
@@ -79,7 +79,7 @@ class Interpret {
     throw Exception('I did not expect this to happen. Please send me an e-mail with your code.');
   }
 
-  static dynamic binop(ASTBinOp op) {
+   dynamic binop(ASTBinOp op) {
     switch (op.op) {
       case '=':
         assert(typeof(op.left) == ASTIdentifier);
@@ -127,11 +127,14 @@ class Interpret {
         if (typeof(op.left) == ASTInt && typeof(op.right) == ASTInt) 
           return solve(op.left as ASTInt, op.right as ASTInt, op.op);
 
-        return solve(getValue(op.left), getValue(op.right), op.op);
+        var _left = getValue( op.left );
+        var _right = getValue( op.right );
+
+        return solve( _left , _right , op.op );
     }
   }
 
-  static void runIf(ASTIf ifblock) {
+   void runIf(ASTIf ifblock) {
     bool cond;
 
     switch (typeof(ifblock.condition)) {
@@ -149,8 +152,18 @@ class Interpret {
     else runBlock(ifblock.falseBlock);
   }
 
-  static void functionCall(String functionName, List<ASTValue> arguments) {
+   void functionCall(String functionName, List<ASTValue> arguments) {
     var function = functions[functionName];
+
+    // since we dont have any semblence of scope, we have to
+    // store the old state of the arguments here (in case we are recursing)
+    var _oldParams = Map<String, ASTIdentifier>();
+    for (var i in function.formalParamaters) {
+      if (identifiers.containsKey(i.name)) 
+        _oldParams[i.name] = identifiers[i.name];
+      else
+        _oldParams[i.name] = null;
+    }
 
     assert(function.formalParamaters.length == arguments.length);
     for (int i = 0; i < function.formalParamaters.length; ++i) {
@@ -163,11 +176,17 @@ class Interpret {
 
     for (var cmd in function.block.blockItems) {
       runCommand(cmd);
-      if (returnFlag) { returnFlag = false; return; }
+      if (returnFlag) { returnFlag = false; break; }
     }
+
+    // restore the old state
+    _oldParams.forEach((key, value) {
+      if (value == null && identifiers.containsKey(key)) identifiers.remove(key);
+      if (value != null) identifiers[key] = value; 
+    });
   }
 
-  static void runFor(ASTFor forBlock) {
+   void runFor(ASTFor forBlock) {
     if (!identifiers.containsKey(forBlock.counter.name))
       identifiers[forBlock.counter.name] = forBlock.counter;
 
@@ -204,7 +223,7 @@ class Interpret {
     }
   }
 
-  static void runWhile(ASTWhile whileBlock) {
+   void runWhile(ASTWhile whileBlock) {
     bool shouldRun = true;
     bool _isBinOp = (typeof(whileBlock.check) == ASTBinOp);
 
@@ -234,7 +253,7 @@ class Interpret {
     }
   }
 
-  static void runCommand(ASTBase cmd) {
+   void runCommand(ASTBase cmd) {
     switch (cmd.runtimeType) {
       case ASTBreak:
         breakFlag = true;
@@ -245,11 +264,11 @@ class Interpret {
         break;
 
       case ASTReturn:
-        returnFlag = true;
+        // returnFlag = true;
         var ret = (cmd as ASTReturn);
         // if (ret.returnValue is ASTVoid) break;
-        returnFlag = true;
         returnStack.add( getValue(ret.returnValue) );
+        returnFlag = true;
         break;
 
 
@@ -293,7 +312,7 @@ class Interpret {
     }
   }
 
-  static void runBlock(ASTBlock block) {
+   void runBlock(ASTBlock block) {
     if (block == null) return;
 
     for (var cmd in block.blockItems) {
@@ -303,7 +322,7 @@ class Interpret {
     }
   }
 
-  static Future run(ASTProgram program) async {
+   Future run(ASTProgram program) async {
     for (ASTFunction func in program.functionList)
       functions[func.functionName] = func;
 

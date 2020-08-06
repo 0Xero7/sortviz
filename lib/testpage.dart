@@ -185,8 +185,9 @@ class _TestPage extends State<TestPage> {
                   onPressed: () async {
                     var t = Parser().parse(lex(controller.text));
 
-                    Interpret.init();
-                    await Interpret.run(t);
+                    var interpreter = Interpret();
+                    interpreter.init();
+                    await interpreter.run(t);
                   },
                 ),                
               ],
