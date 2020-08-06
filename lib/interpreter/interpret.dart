@@ -19,21 +19,28 @@ import 'package:sortviz/ast/types/astint.dart';
 import 'package:sortviz/ast/types/astvalue.dart';
 
 class Interpret {
-   HashMap<String, ASTFunction> functions;
-   HashMap<String, ASTIdentifier> identifiers;
+  // data binding
+  List<int> array;
+  Function swap;
+
+  // internals
+  HashMap<String, ASTFunction> functions;
+  HashMap<String, ASTIdentifier> identifiers;
 
   // flags
-   bool continueFlag = false, breakFlag = false, returnFlag = false;
+  bool continueFlag = false, breakFlag = false, returnFlag = false;
   
   // use as stack
-   ListQueue<dynamic> valueStack;
+  ListQueue<dynamic> valueStack;
 
   // return value stack
    ListQueue<dynamic> returnStack;
 
    Type typeof(dynamic arg) => arg.runtimeType;
 
-   void init() {
+  void init(Function swap) {
+    this.swap = swap;
+
     functions = HashMap<String, ASTFunction>();
     identifiers = HashMap<String, ASTIdentifier>();
     valueStack = ListQueue<dynamic>();
@@ -87,22 +94,6 @@ class Interpret {
         String _name = (op.left as ASTIdentifier).name;
 
         var value = getValue( op.right ) ;
-
-        // switch (typeof(op.right)) {
-        //   case ASTInt:
-        //     value = (op.right as ASTInt).value;
-        //     break;
-        //   case ASTBinOp:
-        //     value = binop(op.right);
-        //     break;
-        //   case ASTFunctionCall:
-        //     var fcall = (op.right as ASTFunctionCall);
-        //     functionCall(fcall.functionName, fcall.argument);
-            
-        //     assert(returnStack != null && returnStack.length > 0);
-        //     value = returnStack.removeLast();
-        //     break;
-        // }
        
         identifiers[_name] = ASTIdentifier(name: _name);
 
@@ -131,6 +122,29 @@ class Interpret {
         var _right = getValue( op.right );
 
         return solve( _left , _right , op.op );
+
+      case '.':
+        assert(op.left is ASTIdentifier && (op.left as ASTIdentifier).name == 'array');
+        
+        assert(op.right is ASTFunctionCall);
+        //  && 
+        //   ((op.right as ASTFunctionCall).functionName == 'at' 
+        // || (op.right as ASTFunctionCall).functionName == 'swap'));
+
+        if ((op.right as ASTFunctionCall).functionName == 'at')
+          assert((op.right as ASTFunctionCall).argument.length == 1);
+        if ((op.right as ASTFunctionCall).functionName == 'swap')
+          assert((op.right as ASTFunctionCall).argument.length == 2);
+
+        if ((op.right as ASTFunctionCall).functionName == 'at') {
+          var _right = getValue((op.right as ASTFunctionCall).argument[0]);
+          return ASTInt(value: array[_right.value]);
+        } else if ((op.right as ASTFunctionCall).functionName == 'swap') {
+          var _from = getValue((op.right as ASTFunctionCall).argument[0]);
+          var _to = getValue((op.right as ASTFunctionCall).argument[1]);
+          swap(_from.value, _to.value);
+          return ASTInt(value: array[_to.value]);
+        }
     }
   }
 
@@ -304,10 +318,12 @@ class Interpret {
         var p = cmd as ASTPrint;
         var value = p.value;
 
-        if (value.runtimeType != ASTIdentifier)
-          print(p.value.value.toString());
-        else
-          print(identifiers[(value as ASTIdentifier).name].value.toString());
+        print(getValue(p.value).value);
+
+        // if (value.runtimeType != ASTIdentifier)
+        //   print(p.value.value.toString());
+        // else
+        //   print(identifiers[(value as ASTIdentifier).name].value.toString());
         break;
     }
   }
@@ -322,7 +338,10 @@ class Interpret {
     }
   }
 
-   Future run(ASTProgram program) async {
+  Future run(ASTProgram program, {List<int> array}) async {
+    this.array = array;
+    this.identifiers['length'] = ASTIdentifier(name: 'length', value: this.array.length);
+
     for (ASTFunction func in program.functionList)
       functions[func.functionName] = func;
 

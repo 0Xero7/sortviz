@@ -1,10 +1,9 @@
-
-func fact(i) {
-    if i == 1 { return 1; }
-    return fact(i - 1) * i;
-}
-
 func sort() {
-    x = fact(5);
-    print x;
+    for i in 0..length {
+        for j in i+1..length {
+            if array.at(i) > array.at(j) {
+                array.swap(i, j);
+            }
+        }
+    }
 }

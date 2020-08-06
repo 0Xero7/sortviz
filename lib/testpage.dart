@@ -25,11 +25,15 @@ class TestPage extends StatefulWidget {
   List<int> nums = List<int>();
   SortState state;
 
+  Function swap;
+
   @override
   State<StatefulWidget> createState() {
-    for (int i = 0; i < 150; ++i) {
+    for (int i = 0; i < 100; ++i) {
       nums.add(Random.secure().nextInt(500));
+      print(nums.last);
     }
+    print('\n\nBASE END\n\n');
     state = SortState(nums);
 
     return _TestPage();    
@@ -185,27 +189,37 @@ class _TestPage extends State<TestPage> {
                   onPressed: () async {
                     var t = Parser().parse(lex(controller.text));
 
+                    print('FROM BASE: ${widget.state.array[0]}');
+                    widget.swap = (i, j) {
+                      setState(() {
+                        int temp = widget.state.array[i];
+                        widget.state.array[i] = widget.state.array[j];
+                        widget.state.array[j] = temp;
+                      });
+                    };
+
                     var interpreter = Interpret();
-                    interpreter.init();
-                    await interpreter.run(t);
+                    interpreter.init( widget.swap );
+                    await interpreter.run(t, array: widget.state.array );
                   },
                 ),                
               ],
             ),
           ),
-          // Positioned(
-          //   top: 50,
-          //   left: 0,
-          //   right: MediaQuery.of(context).size.width * .25,
-          //   bottom: 50,
+
+          Positioned(
+            top: 50,
+            left: 0,
+            right: MediaQuery.of(context).size.width * .25,
+            bottom: 50,
             
-          //   child: Align(
-          //     alignment: Alignment.bottomCenter,
-          //     child: CustomPaint(
-          //       painter: MyPainter(widget.state),
-          //     ),
-          //   ),
-          // ),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: CustomPaint(
+                painter: MyPainter(widget.state),
+              ),
+            ),
+          ),
 
           Positioned(
             top: 50,

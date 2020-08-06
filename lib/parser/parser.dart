@@ -87,6 +87,16 @@ class Parser {
           op.removeLast();
         }
         op.removeLast();
+      // } else if (tokens[i] == '[') {
+      //   op.add(ASTOperator(op: '['));
+      // } else if (tokens[i] == ']') {
+      //   while (!(op.last is ASTOperator && (op.last as ASTOperator).op == '[')) {
+      //     var right = output.removeLast();
+      //     var left = output.removeLast();
+      //     output.add(ASTBinOp(left: left, right: right, op: (op.last as ASTOperator).op));
+      //     op.removeLast();
+      //   }
+      //   op.removeLast();
       } else if (!precedence.containsKey(tokens[i])) {
         // is a literal or identifier
         var _int = int.tryParse(tokens[i]);
@@ -121,11 +131,15 @@ class Parser {
     for (int i = from; i <= to; ++i) {
       // %%%%%%%%%%%% DEV TEST
       if (tokens[i] == 'print') {
+        int _pStart = ++i;
+        int _pEnd = _pStart;
+        while (tokens[_pEnd] != ';') ++_pEnd;
+        i = _pEnd;
+
         block.blockItems.add(
-          ASTPrint(value: ASTIdentifier(name: tokens[++i]))
+          ASTPrint(value: parseExpression(tokens, _pStart, _pEnd - 1))
         );
         // read ';'
-        ++i;
         continue;
       }
       // %%%%%%%%%%% TEST END
