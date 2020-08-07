@@ -1,7 +1,8 @@
 
 List<RegExp> patterns = [
+  RegExp(r'((\/\/)([^\n])*)'),
   RegExp(r'\b[0-9]+\b'),
-  RegExp(r'(\+|\-|\*|\/|%|(>=)|(<=)|(==)|(!=)|>|<|=|\(|\)|{|}|\;|(\.\.)|\.)'),
+  RegExp(r'(\+|\-|\*|\/|%|(>=)|(<=)|(==)|(!=)|>|<|=|\(|\)|{|}|\;|(\.\.)|\.|(\&\&)|(\|\|))'),
   RegExp(r'\b([a-zA-Z_]+[a-zA-Z0-9_]*)\b'),
 ];
 
@@ -21,7 +22,11 @@ List<String> lex(String source) {
     }
 
     if (match) { _token = newToken; continue; }
-    if (_token.trim() != '') { tokens.add(_token); _token = ""; }
+    if (_token.trim() != '') { 
+      if (!_token.startsWith("//"))
+        tokens.add(_token); 
+      _token = ""; 
+    }
 
     if (source[i] == ' ' || source[i] == '\t' || source[i] == '\n')
       newToken = "";

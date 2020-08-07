@@ -17,15 +17,20 @@ import 'package:sortviz/ast/control/astwhile.dart';
 import 'package:sortviz/ast/types/astbool.dart';
 import 'package:sortviz/ast/types/astint.dart';
 import 'package:sortviz/ast/types/astvalue.dart';
+import 'package:sortviz/common/viz_helper.dart';
 
 class Interpret {
   // data binding
   List<int> array;
-  Function swap;
+  Function swap, checking;
+  Function setMainArrayValue;
+  Function getAuxAt, setAuxArrayValue;
 
   // internals
   HashMap<String, ASTFunction> functions;
   HashMap<String, ASTIdentifier> identifiers;
+  // in an attempt to avoid recalculating indices
+  ListQueue<int> accessedIndices;
 
   // flags
   bool continueFlag = false, breakFlag = false, returnFlag = false;
@@ -38,47 +43,57 @@ class Interpret {
 
    Type typeof(dynamic arg) => arg.runtimeType;
 
-  void init(Function swap) {
+  void init(Function swap, Function checking, 
+    Function setMainArrayValue, 
+    Function getAuxAt, Function setAuxArrayValue) {
+
     this.swap = swap;
+    this.checking = checking;
+    this.setMainArrayValue = setMainArrayValue;
+    this.setAuxArrayValue = setAuxArrayValue;
+    this.getAuxAt = getAuxAt;
 
     functions = HashMap<String, ASTFunction>();
+    accessedIndices = ListQueue<int>();
     identifiers = HashMap<String, ASTIdentifier>();
     valueStack = ListQueue<dynamic>();
     returnStack = ListQueue<dynamic>();
   }
 
-   void declaration(ASTDecl decl) {
+  void declaration(ASTDecl decl) {
     identifiers[decl.variableName] = ASTIdentifier(name: decl.variableName);
   }
 
-   dynamic solve(ASTInt l, ASTInt r, String op) {
+  dynamic solve(ASTValue l, ASTValue r, String op) {
     switch (op) {
       case '+': return ASTInt(value: l.value + r.value);
       case '-': return ASTInt(value: l.value - r.value);
       case '*': return ASTInt(value: l.value * r.value);
       case '/': return ASTInt(value: l.value ~/ r.value);
       case '%': return ASTInt(value: l.value % r.value);
-      case '>': return l.value > r.value;
-      case '>=': return l.value >= r.value;
-      case '<=': return l.value <= r.value;
-      case '<': return l.value < r.value;
-      case '==': return l.value == r.value;
-      case '!=': return l.value != r.value;
+      case '>': return ASTBool(value: l.value > r.value);
+      case '>=': return ASTBool(value: l.value >= r.value);
+      case '<=': return ASTBool(value: l.value <= r.value);
+      case '<': return ASTBool(value: l.value < r.value);
+      case '==': return ASTBool(value: l.value == r.value);
+      case '!=': return ASTBool(value: l.value != r.value);
+      case '&&': return ASTBool(value: l.value && r.value);
+      case '||': return ASTBool(value: l.value || r.value);
     }
     
     throw Exception('Unknown binary operator $op');
   }
 
-   dynamic getValue(ASTValue value) {
+  Future<dynamic> getValue(ASTValue value) async {
     switch (typeof(value)) {
-      case ASTBinOp: return binop(value);
+      case ASTBinOp: return await binop(value);
       case ASTIdentifier:
         return ASTInt(value: identifiers[(value as ASTIdentifier).name].value);
       case ASTInt:
       case ASTBool: return value;
       case ASTFunctionCall:
         var _temp = value as ASTFunctionCall;
-        functionCall( _temp.functionName, _temp.argument );
+        await functionCall( _temp.functionName, _temp.argument );
         assert( returnStack != null && returnStack.length > 0 );
         return returnStack.removeLast();
     }
@@ -86,14 +101,14 @@ class Interpret {
     throw Exception('I did not expect this to happen. Please send me an e-mail with your code.');
   }
 
-   dynamic binop(ASTBinOp op) {
+  Future<dynamic> binop(ASTBinOp op) async {
     switch (op.op) {
       case '=':
         assert(typeof(op.left) == ASTIdentifier);
 
         String _name = (op.left as ASTIdentifier).name;
 
-        var value = getValue( op.right ) ;
+        var value = await getValue( op.right ) ;
        
         identifiers[_name] = ASTIdentifier(name: _name);
 
@@ -115,40 +130,68 @@ class Interpret {
       case '<':
       case '!=':
       case '==':
-        if (typeof(op.left) == ASTInt && typeof(op.right) == ASTInt) 
-          return solve(op.left as ASTInt, op.right as ASTInt, op.op);
+      case '&&':
+      case '||':
+        // if (typeof(op.left) == ASTInt && typeof(op.right) == ASTInt) 
+        //   return solve(op.left as ASTInt, op.right as ASTInt, op.op);
 
-        var _left = getValue( op.left );
-        var _right = getValue( op.right );
+        var _left = await getValue( op.left );
+        var _right = await getValue( op.right );
+        var _result = solve( _left , _right , op.op );
 
-        return solve( _left , _right , op.op );
+        if (op.left is ASTBinOp && op.right is ASTBinOp && isComparingArrayElements(op.left, op.right))
+          await checking( accessedIndices.removeLast(), accessedIndices.removeLast() );
+
+        return _result;
 
       case '.':
-        assert(op.left is ASTIdentifier && (op.left as ASTIdentifier).name == 'array');
+        assert(op.left is ASTIdentifier 
+          && ((op.left as ASTIdentifier).name == 'array' || (op.left as ASTIdentifier).name == 'aux'));
         
         assert(op.right is ASTFunctionCall);
-        //  && 
-        //   ((op.right as ASTFunctionCall).functionName == 'at' 
-        // || (op.right as ASTFunctionCall).functionName == 'swap'));
 
         if ((op.right as ASTFunctionCall).functionName == 'at')
           assert((op.right as ASTFunctionCall).argument.length == 1);
+        if ((op.right as ASTFunctionCall).functionName == 'set')
+          assert((op.right as ASTFunctionCall).argument.length == 2);
         if ((op.right as ASTFunctionCall).functionName == 'swap')
           assert((op.right as ASTFunctionCall).argument.length == 2);
 
         if ((op.right as ASTFunctionCall).functionName == 'at') {
-          var _right = getValue((op.right as ASTFunctionCall).argument[0]);
-          return ASTInt(value: array[_right.value]);
+          var _id = (op.left as ASTIdentifier);
+          var _right;
+          
+          if (_id.name == 'array') {
+            _right = await getValue((op.right as ASTFunctionCall).argument[0]);
+            accessedIndices.add(_right.value);
+            return ASTInt(value: array[_right.value]);
+          } else if (_id.name == 'aux') {
+            _right = await getValue((op.right as ASTFunctionCall).argument[0]);
+            return ASTInt(value: getAuxAt(_right.value));
+          }
+
+          throw Exception('Cannot call "at" on ${_id.name}.');
+
         } else if ((op.right as ASTFunctionCall).functionName == 'swap') {
-          var _from = getValue((op.right as ASTFunctionCall).argument[0]);
-          var _to = getValue((op.right as ASTFunctionCall).argument[1]);
-          swap(_from.value, _to.value);
+          var _from = await getValue((op.right as ASTFunctionCall).argument[0]);
+          var _to = await getValue((op.right as ASTFunctionCall).argument[1]);
+          await swap(_from.value, _to.value);
           return ASTInt(value: array[_to.value]);
+        } else if ((op.right as ASTFunctionCall).functionName == 'set') {
+          var _index = await getValue((op.right as ASTFunctionCall).argument[0]);
+          var _value = await getValue((op.right as ASTFunctionCall).argument[1]);
+
+          if ((op.left as ASTIdentifier).name == 'array')
+            await setMainArrayValue(_index.value, _value.value);
+          else if ((op.left as ASTIdentifier).name == 'aux')
+            await setAuxArrayValue(_index.value, _value.value);
+
+          return ASTInt(value: _value.value);
         }
     }
   }
 
-   void runIf(ASTIf ifblock) {
+  Future runIf(ASTIf ifblock) async {
     bool cond;
 
     switch (typeof(ifblock.condition)) {
@@ -156,17 +199,17 @@ class Interpret {
         cond = ifblock.condition.value;
         break;
       case ASTBinOp:
-        cond = binop(ifblock.condition);
+        cond = (await binop(ifblock.condition)).value;
         break;
     }
 
     assert(cond != null);
 
-    if (cond == true) runBlock(ifblock.trueBlock);
-    else runBlock(ifblock.falseBlock);
+    if (cond == true) await runBlock(ifblock.trueBlock);
+    else await runBlock(ifblock.falseBlock);
   }
 
-   void functionCall(String functionName, List<ASTValue> arguments) {
+  Future functionCall(String functionName, List<ASTValue> arguments) async {
     var function = functions[functionName];
 
     // since we dont have any semblence of scope, we have to
@@ -181,15 +224,15 @@ class Interpret {
 
     assert(function.formalParamaters.length == arguments.length);
     for (int i = 0; i < function.formalParamaters.length; ++i) {
-      var _val = getValue( arguments[i] );
+      var _val = await getValue( arguments[i] );
       identifiers[function.formalParamaters[i].name] = ASTIdentifier(
         name: function.formalParamaters[i].name,
-        value: getValue( _val ).value
+        value: (await getValue( _val )).value
       );
     }
 
     for (var cmd in function.block.blockItems) {
-      runCommand(cmd);
+      await runCommand(cmd);
       if (returnFlag) { returnFlag = false; break; }
     }
 
@@ -200,20 +243,20 @@ class Interpret {
     });
   }
 
-   void runFor(ASTFor forBlock) {
+  Future runFor(ASTFor forBlock) async {
     if (!identifiers.containsKey(forBlock.counter.name))
       identifiers[forBlock.counter.name] = forBlock.counter;
 
     int i;
     if (forBlock.from is ASTInt) i = forBlock.from.value;
-    else if (forBlock.from is ASTBinOp) i = binop(forBlock.from).value;
+    else if (forBlock.from is ASTBinOp) i = (await binop(forBlock.from)).value;
     else if (forBlock.from is ASTIdentifier) 
       i = identifiers[(forBlock.from as ASTIdentifier).name].value;
 
     for (;; ++i) {
       int end;      
       if (forBlock.to is ASTInt) end = forBlock.to.value;
-      else if (forBlock.to is ASTBinOp) end = binop(forBlock.to).value;
+      else if (forBlock.to is ASTBinOp) end = (await binop(forBlock.to)).value;
       else if (forBlock.to is ASTIdentifier) 
         end = identifiers[(forBlock.to as ASTIdentifier).name].value;
       if (i >= end) break;
@@ -224,7 +267,7 @@ class Interpret {
         if (typeof(cmd) == ASTBreak) break;
         if (typeof(cmd) == ASTContinue) continue;
 
-        runCommand(cmd);
+        await runCommand(cmd);
         if (breakFlag || returnFlag) break;
         if (continueFlag) { continueFlag = false; break; }
       }
@@ -237,11 +280,11 @@ class Interpret {
     }
   }
 
-   void runWhile(ASTWhile whileBlock) {
+  Future runWhile(ASTWhile whileBlock) async {
     bool shouldRun = true;
     bool _isBinOp = (typeof(whileBlock.check) == ASTBinOp);
 
-    if (_isBinOp) shouldRun = binop(whileBlock.check);
+    if (_isBinOp) shouldRun = (await getValue(whileBlock.check)).value;
     else shouldRun = (whileBlock.check as ASTBool).value;
 
     while (shouldRun) {
@@ -249,7 +292,7 @@ class Interpret {
         // if (typeof(cmd) == ASTBreak) break;
         // if (typeof(cmd) == ASTContinue) continue;
 
-        runCommand(cmd);
+        await runCommand(cmd);
 
         if (breakFlag || returnFlag)  break;
         if (continueFlag) { continueFlag = false; break; }
@@ -262,12 +305,12 @@ class Interpret {
       if (returnFlag) break;
 
       
-      if (_isBinOp) shouldRun = binop(whileBlock.check);
+      if (_isBinOp) shouldRun = await binop(whileBlock.check);
       else shouldRun = (whileBlock.check as ASTBool).value;
     }
   }
 
-   void runCommand(ASTBase cmd) {
+  Future runCommand(ASTBase cmd) async {
     switch (cmd.runtimeType) {
       case ASTBreak:
         breakFlag = true;
@@ -281,44 +324,44 @@ class Interpret {
         // returnFlag = true;
         var ret = (cmd as ASTReturn);
         // if (ret.returnValue is ASTVoid) break;
-        returnStack.add( getValue(ret.returnValue) );
+        returnStack.add( await getValue(ret.returnValue) );
         returnFlag = true;
         break;
 
 
 
-      case ASTDecl:
-        declaration(cmd as ASTDecl);
-        break;
+      // case ASTDecl:
+      //   declaration(cmd as ASTDecl);
+      //   break;
 
       case ASTBinOp:
-        binop(cmd as ASTBinOp);
+        await binop(cmd as ASTBinOp);
         break;
 
       case ASTIf:
-        runIf(cmd as ASTIf);
+        await runIf(cmd as ASTIf);
         break;
 
       case ASTFunctionCall:
         var fcall = (cmd as ASTFunctionCall);
-        functionCall(fcall.functionName, fcall.argument);
+        await functionCall(fcall.functionName, fcall.argument);
         break;
 
 
 
       case ASTFor:
-        runFor(cmd as ASTFor);
+        await runFor(cmd as ASTFor);
         break;
 
       case ASTWhile:
-        runWhile(cmd as ASTWhile);
+        await runWhile(cmd as ASTWhile);
         break;
 
       case ASTPrint:
         var p = cmd as ASTPrint;
         var value = p.value;
 
-        print(getValue(p.value).value);
+        print((await getValue(p.value)).value);
 
         // if (value.runtimeType != ASTIdentifier)
         //   print(p.value.value.toString());
@@ -328,11 +371,11 @@ class Interpret {
     }
   }
 
-   void runBlock(ASTBlock block) {
+  Future runBlock(ASTBlock block) async {
     if (block == null) return;
 
     for (var cmd in block.blockItems) {
-      runCommand(cmd);
+      await runCommand(cmd);
 
       if (breakFlag || continueFlag || returnFlag) return;
     }
@@ -345,6 +388,6 @@ class Interpret {
     for (ASTFunction func in program.functionList)
       functions[func.functionName] = func;
 
-    functionCall('sort', []);
+    await functionCall('sort', []);
   }
 }

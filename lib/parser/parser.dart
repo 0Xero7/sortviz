@@ -31,7 +31,7 @@ class Parser {
         params.add( parseExpression(tokens, start, end - 1) );
         start = end + 1;
       } else if (end == to) {
-        assert(paramDepth == 0);
+        assert(paramDepth == 0 || (paramDepth == 1 && tokens[end] == ')'));
         params.add( parseExpression(tokens, start, end) );
       }
 

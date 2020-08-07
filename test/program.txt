@@ -1,9 +1,27 @@
-func sort() {
-    for i in 0..length {
-        for j in i+1..length {
-            if array.at(i) > array.at(j) {
-                array.swap(i, j);
-            }
+
+func partition(low, high) {
+    i = low - 1;
+
+    for j in low..high {
+        if array.at(j) < array.at(high) {
+            i = i + 1;
+            array.swap(i, j);
         }
     }
+
+    array.swap(i + 1, high);
+    return i + 1;
+}
+
+func quicksort(low, high) {
+    if low < high {
+        pi = partition(low, high);
+
+        quicksort(low, pi - 1);
+        quicksort(pi + 1, high);
+    }
+}
+
+func sort() {
+    quicksort(0, length - 1);
 }

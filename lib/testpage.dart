@@ -1,6 +1,8 @@
 import 'dart:collection';
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:sortviz/interpreter/interpret.dart';
 import 'package:sortviz/lexer/lexer.dart';
 import 'package:sortviz/parser/parser.dart';
@@ -10,11 +12,13 @@ import 'package:sortviz/test_ast.dart';
 class SortState {
   List<int> array;
   List<int> auxillary;
-  HashSet<int> checkingIndices;
+  HashSet<int> checkingIndices, swappingIndices;
   HashSet<int> auxillarySet;
+  bool changed = false;
 
   SortState(this.array) {
     checkingIndices = HashSet<int>();
+    swappingIndices = HashSet<int>();
     auxillary = List<int>(this.array.length);
     auxillarySet = HashSet<int>();
   }
@@ -29,11 +33,9 @@ class TestPage extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 150; ++i) {
       nums.add(Random.secure().nextInt(500));
-      print(nums.last);
     }
-    print('\n\nBASE END\n\n');
     state = SortState(nums);
 
     return _TestPage();    
@@ -42,115 +44,10 @@ class TestPage extends StatefulWidget {
 
 class _TestPage extends State<TestPage> {
 
-  static const int delay = 1 ;
+  static const int delay = 1;
 
-  Future merge(int l, int mid, int r) async {
-    int lptr = l, rptr = mid + 1;
-    int ptr = lptr;
+  bool editorCollapsed = false;
 
-    while (lptr <= mid && rptr <= r) {
-      if (widget.state.array[lptr] <= widget.state.array[rptr]) {
-        setState(() {
-          widget.state.auxillarySet.add(ptr);
-          widget.state.auxillary[ptr++] = widget.state.array[lptr++];
-        });
-      } else {
-        setState(() {
-          widget.state.auxillarySet.add(ptr);
-          widget.state.auxillary[ptr++] = widget.state.array[rptr++];
-        });
-      }
-
-      await Future.delayed(const Duration(milliseconds: delay));
-    }
-
-    while (lptr <= mid) {
-      setState(() {
-        widget.state.auxillarySet.add(ptr);
-        widget.state.auxillary[ptr++] = widget.state.array[lptr++];
-      });
-      await Future.delayed(const Duration(milliseconds: delay));
-    }
-    while (rptr <= r) {
-      setState(() {
-        widget.state.auxillarySet.add(ptr);
-        widget.state.auxillary[ptr++] = widget.state.array[rptr++];
-      });
-      await Future.delayed(const Duration(milliseconds: delay));
-    }
-  }
-
-  Future mergeSort(int l, int r) async {
-    setState(() {
-      widget.state.checkingIndices.clear();
-      widget.state.checkingIndices.add(l);
-      widget.state.checkingIndices.add(r);
-    });
-
-    await Future.delayed(const Duration(milliseconds: delay));
-
-    int mid = (l + r) ~/ 2;
-
-    if (r > l) {
-      await mergeSort(l, mid);
-      await mergeSort(mid + 1, r);
-      await merge(l, mid, r);
-
-      for (int i = l; i <= r; ++i) {
-        setState(() {
-          widget.state.array[i] = widget.state.auxillary[i];
-          widget.state.auxillarySet.remove(i);
-
-        });
-        await Future.delayed(const Duration(milliseconds: delay));
-      }
-    }
-
-    setState(() {
-      widget.state.checkingIndices.clear();
-    });
-  }
-  
-  Future doShit() async {
-    List<int> nums = widget.state.array;
-
-    // for (int i = 0; i < nums.length; ++i) {
-    //   for (int j = i + 1; j < nums.length; ++j) {
-    //     if (nums[i] > nums[j]) {
-    //       setState(() {
-    //         int a = nums[j];
-    //         nums[j] = nums[i];
-    //         nums[i] = a;
-    //       });
-    //     }
-
-    //     await Future.delayed(Duration(microseconds: 1));
-    //   }
-    // }
-
-    for (int i = 0; i < nums.length; ++i) {
-      setState(() {
-        widget.state.checkingIndices.clear();
-      });
-      for (int j = 0; j < nums.length - 1 - i; ++j) {
-        bool swap = false;
-        if (nums[j] > nums[j + 1]) swap = true; 
-        
-        setState(() {
-          if (swap) {
-            int a = nums[j];
-            nums[j] = nums[j + 1];
-            nums[j + 1] = a;
-          }
-          if (j == 0) widget.state.checkingIndices.add(0);
-          else widget.state.checkingIndices.remove(j - 1);
-          widget.state.checkingIndices.add(j + 1);
-        });
-        
-        await Future.delayed(const Duration(microseconds: 100000));
-      }
-    }
-  }
 
   final controller = TextEditingController();
 
@@ -160,75 +57,170 @@ class _TestPage extends State<TestPage> {
       body: Stack(
         children: [
           Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Row(
-              children: [
-                FlatButton(
-                  child: Text('Sort'),
-                  onPressed: () async {
-                    await mergeSort(0, widget.state.array.length - 1);
-                  },
-                ),
-
-                FlatButton(
-                  child: Text('New Array'),
-                  onPressed: () async {
-                    for (int i = 0; i < widget.state.array.length; ++i) {
-                      setState(() {
-                        widget.state.array[i] = Random.secure().nextInt(500);
-                      });
-                      await Future.delayed(Duration(milliseconds: delay));
-                    }
-                  },
-                ),
-
-                FlatButton(
-                  child: Text('Run'),
-                  onPressed: () async {
-                    var t = Parser().parse(lex(controller.text));
-
-                    print('FROM BASE: ${widget.state.array[0]}');
-                    widget.swap = (i, j) {
-                      setState(() {
-                        int temp = widget.state.array[i];
-                        widget.state.array[i] = widget.state.array[j];
-                        widget.state.array[j] = temp;
-                      });
-                    };
-
-                    var interpreter = Interpret();
-                    interpreter.init( widget.swap );
-                    await interpreter.run(t, array: widget.state.array );
-                  },
-                ),                
-              ],
-            ),
-          ),
-
-          Positioned(
             top: 50,
             left: 0,
-            right: MediaQuery.of(context).size.width * .25,
+            // right: MediaQuery.of(context).size.width * .25,
+            right: 0,
             bottom: 50,
             
             child: Align(
               alignment: Alignment.bottomCenter,
               child: CustomPaint(
                 painter: MyPainter(widget.state),
+                isComplex: true, 
+                willChange: widget.state.changed ,
               ),
             ),
           ),
 
           Positioned(
-            top: 50,
-            left: MediaQuery.of(context).size.width * .75,
+            top: 0,
+            left: 0,
             right: 0,
+            child: Container(
+              color: Colors.white12,
+              child: Row(
+                children: [
+                  FlatButton(
+                    child: Text('New Array'),
+                    onPressed: () async {
+                      for (int i = 0; i < widget.state.array.length; ++i) {
+                        setState(() {
+                          widget.state.array[i] = Random.secure().nextInt(500);
+                          widget.state.auxillarySet.remove(i);
+                        });
+                        
+                        await Future.delayed(Duration(milliseconds: delay));
+                      }
+                      widget.state.auxillary = List<int>(widget.state.array.length);
+                    },
+                  ),
+
+                  FlatButton(
+                    child: Text('Run'),
+                    onPressed: () async {
+                      var t = Parser().parse(lex(controller.text));
+
+                      widget.swap = (i, j) async {
+                        setState(() {
+                          int temp = widget.state.array[i];
+                          widget.state.array[i] = widget.state.array[j];
+                          widget.state.array[j] = temp;
+
+                          widget.state.swappingIndices.add(i);
+                          widget.state.swappingIndices.add(j);
+                        });
+
+                        await Future.delayed(const Duration(microseconds: 1));
+
+                        widget.state.swappingIndices.clear();
+                      };
+
+                      var checking = (int i, int j) async {
+                        setState(() {
+                          widget.state.checkingIndices.add(i);
+                          widget.state.checkingIndices.add(j);
+                        });
+
+                        await Future.delayed(const Duration(microseconds: 1));
+                        widget.state.checkingIndices.clear();
+                      };
+
+                      var setMainArrayValue = (int index, int value) async {
+                        setState(() {
+                          widget.state.swappingIndices.add(index);
+                          widget.state.array[index] = value;
+                        });
+
+                        await Future.delayed(const Duration(microseconds: 1));
+                        widget.state.swappingIndices.clear();
+                      };
+                      
+                      var getAuxAt = (int index) async => widget.state.auxillary[index];
+
+                      var setAuxArrayValue = (int index, int value) async {
+                        setState(() {
+                          widget.state.auxillary[index] = value;
+                          widget.state.auxillarySet.add(index);
+                        });
+
+                        await Future.delayed(const Duration(microseconds: 1));
+                      };
+
+                      var interpreter = Interpret();
+                      interpreter.init( widget.swap, checking, setMainArrayValue, getAuxAt, setAuxArrayValue );
+                      await interpreter.run(t, array: widget.state.array );
+                    },
+                  ),                
+                ],
+              ),
+            ),
+          ),
+
+          Positioned(
+            top: 48,
+            // left: MediaQuery.of(context).size.width * ( editorCollapsed ? .9 : .75 ),
+            right: 0,
+            bottom: 50,
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+
+                  width: (editorCollapsed ? 50 : 500),
+                  child: Container(
+                    color: Colors.black38,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: double.infinity,
+
+                          child: FlatButton(
+                            child: Center(child: Icon( editorCollapsed ? Icons.keyboard_arrow_left :  Icons.keyboard_arrow_right )),
+                            onPressed: () {
+                              setState(() {
+                                editorCollapsed = !editorCollapsed;
+                              });
+                            },
+                          ),
+                        ),
+                        Container(width: 1, color: Colors.white12,),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: TextField(
+                              controller: controller,
+                              maxLines: null,
+                              keyboardType: TextInputType.multiline,
+                              expands: true,
+                              style: GoogleFonts.getFont('Fira Mono', fontSize: 16, color: Colors.white)
+                            ),
+                          ),
+                        )
+                      ]
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          Positioned(
             bottom: 0,
-            child: TextField(
-              controller: controller,
-              maxLines: null,
+            left: 0,
+            right: 0,
+
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: Container(
+                  color: Colors.black.withAlpha(60),
+                  height: 50,
+                ),
+              ),
             ),
           )
         ]
@@ -249,38 +241,82 @@ class MyPainter extends CustomPainter {
     final linePaint = Paint()
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round
-      ..color = Colors.teal
+      ..color = Colors.white12
       ..strokeWidth = strokeWidth;
 
     final checkingPaint = Paint()
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round
-      ..color = Colors.red
+      ..color = Colors.purple.shade400
       ..strokeWidth = strokeWidth;
 
     final auxillaryPaint = Paint()
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round
-      ..color = Colors.blue
+      ..color = Colors.grey.shade400
+      ..strokeWidth = strokeWidth;
+
+    final swappingPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.pink
       ..strokeWidth = strokeWidth;
     
     // 10 stroke and 1 gap
     int totalWidth = state.array.length * (strokeWidth.toInt() + 1);
     double left = -totalWidth / 2;
 
+    canvas.drawColor(Colors.blueGrey.shade900, BlendMode.color);
+
+    var points = List<Offset>();
+    for (int i = 0; i < state.array.length; ++i) {
+      double value = (state.auxillarySet.contains(i) ? state.auxillary[i] : state.array[i]) as double;
+
+      points.add(Offset(left, value / 200));
+      points.add(Offset(left, -value-3));
+      points.add(Offset(left + strokeWidth, -value-3));
+      points.add(Offset(left + strokeWidth, value / 200));
+      left += strokeWidth + 1;
+    }
+    points.add(Offset(left, 20));
+
+    var shadowPaint = Paint()
+                    ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 5)
+                    ..blendMode = BlendMode.colorBurn
+                    ..strokeCap = StrokeCap.round
+                    ..color = Colors.black.withAlpha(16);
+
+    var path = Path();
+    path.addPolygon(points, false);
+    canvas.drawPath(path, shadowPaint);
+
+    // for (int i = 0; i < state.array.length; ++i) {
+    //   int value = state.auxillarySet.contains(i) ? state.auxillary[i] : state.array[i];
+
+    //   canvas.drawLine(Offset(left, 20), Offset(left, (-value as double)), shadowPaint);
+    //   left += strokeWidth + 1;
+    // }
+
+    left = -totalWidth / 2;
     for (int i = 0; i < state.array.length; ++i) {
       bool isChecking = state.checkingIndices.contains(i);
-      int value = state.auxillarySet.contains(i) ? state.auxillary[i] : state.array[i];
       bool auxillary = state.auxillarySet.contains(i);
+      bool swapping = state.swappingIndices.contains(i);
+      
+      double value = (state.auxillarySet.contains(i) ? state.auxillary[i] : state.array[i] as double);
 
-      canvas.drawLine(Offset(left, 0), Offset(left, -value as double), isChecking ? checkingPaint : auxillary ? auxillaryPaint : linePaint);
+      var paint = linePaint;
+      if (isChecking) paint = checkingPaint;
+      else if (swapping) paint = swappingPaint;
+      if (auxillary) paint = auxillaryPaint;
+      canvas.drawLine(Offset(left, value / 40), Offset(left, -value), paint);
       left += strokeWidth + 1;
     }
   }
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) {
-    return true;
+    return state.changed;
   }
 
 }
