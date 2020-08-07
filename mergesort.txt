@@ -20,10 +20,14 @@ func merge(l, mid, r) {
         ptr = ptr + 1;
     }
 
-    while j <= mid {
+    while j <= r {
         aux.set(ptr, array.at(j));
         j = j + 1;
         ptr = ptr + 1;
+    }
+
+    for k in l..r+1 {
+        array.set(k, aux.at(k));
     }
 }
 

@@ -7,8 +7,10 @@ import 'package:sortviz/ast/types/astvalue.dart';
 // }
 
 class ASTWhile extends ASTBase {
-  ASTValue check;
+  dynamic check;
   ASTBlock block;
 
-  ASTWhile({this.check, this.block});
+  ASTWhile({this.check, this.block}) {
+    assert(check is ASTValue);
+  }
 }

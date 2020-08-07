@@ -18,6 +18,7 @@ import 'package:sortviz/ast/types/astbool.dart';
 import 'package:sortviz/ast/types/astint.dart';
 import 'package:sortviz/ast/types/astvalue.dart';
 import 'package:sortviz/common/viz_helper.dart';
+import 'package:sortviz/scope/scope_manager.dart';
 
 class Interpret {
   // data binding
@@ -28,7 +29,8 @@ class Interpret {
 
   // internals
   HashMap<String, ASTFunction> functions;
-  HashMap<String, ASTIdentifier> identifiers;
+  // HashMap<String, ASTIdentifier> identifiers;
+  ScopeManager scope;
   // in an attempt to avoid recalculating indices
   ListQueue<int> accessedIndices;
 
@@ -55,16 +57,18 @@ class Interpret {
 
     functions = HashMap<String, ASTFunction>();
     accessedIndices = ListQueue<int>();
-    identifiers = HashMap<String, ASTIdentifier>();
+    // identifiers = HashMap<String, ASTIdentifier>();
+    scope = ScopeManager();
     valueStack = ListQueue<dynamic>();
     returnStack = ListQueue<dynamic>();
   }
 
-  void declaration(ASTDecl decl) {
-    identifiers[decl.variableName] = ASTIdentifier(name: decl.variableName);
-  }
+  // void declaration(ASTDecl decl) {
+  //   identifiers[decl.variableName] = ASTIdentifier(name: decl.variableName);
+  // }
 
-  dynamic solve(ASTValue l, ASTValue r, String op) {
+  dynamic solve(dynamic l, dynamic r, String op) {
+    assert(l is ASTValue && r is ASTValue);
     switch (op) {
       case '+': return ASTInt(value: l.value + r.value);
       case '-': return ASTInt(value: l.value - r.value);
@@ -84,11 +88,13 @@ class Interpret {
     throw Exception('Unknown binary operator $op');
   }
 
-  Future<dynamic> getValue(ASTValue value) async {
+  Future<dynamic> getValue(dynamic value) async {
+    assert(value is ASTValue);
+
     switch (typeof(value)) {
       case ASTBinOp: return await binop(value);
       case ASTIdentifier:
-        return ASTInt(value: identifiers[(value as ASTIdentifier).name].value);
+        return ASTInt(value: scope.tryGet((value as ASTIdentifier).name).value);
       case ASTInt:
       case ASTBool: return value;
       case ASTFunctionCall:
@@ -110,14 +116,18 @@ class Interpret {
 
         var value = await getValue( op.right ) ;
        
-        identifiers[_name] = ASTIdentifier(name: _name);
+        // scope.setInScope(_name);
+        // identifiers[_name] = ASTIdentifier(name: _name);
 
-        if (value is ASTInt)
-          identifiers[_name].value = value.value;
-        else
-          identifiers[_name].value = value;
+        if (value is ASTInt) scope.setInScope(_name, value: ASTIdentifier(name: _name, value: value.value));
+        else scope.setInScope(_name, value: value);
 
-        return identifiers[_name].value;
+        //   identifiers[_name].value = value.value;
+        // else
+        //   identifiers[_name].value = value;
+
+        // return identifiers[_name].value;
+        return scope.tryGet(_name).value;
 
       case '+':
       case '-':
@@ -209,26 +219,42 @@ class Interpret {
     else await runBlock(ifblock.falseBlock);
   }
 
-  Future functionCall(String functionName, List<ASTValue> arguments) async {
+  Future functionCall(String functionName, List<dynamic> arguments) async {
     var function = functions[functionName];
 
+    var evaluatedArgs = List<ASTValue>();
+
+    for (var element in arguments) {
+      evaluatedArgs.add( (await getValue(element)) ); 
+    }
+    // arguments.forEach((element) async { 
+    //   assert(element is ASTValue);
+    // });
+
+
+    scope.pushScopeToRoot();
     // since we dont have any semblence of scope, we have to
     // store the old state of the arguments here (in case we are recursing)
-    var _oldParams = Map<String, ASTIdentifier>();
-    for (var i in function.formalParamaters) {
-      if (identifiers.containsKey(i.name)) 
-        _oldParams[i.name] = identifiers[i.name];
-      else
-        _oldParams[i.name] = null;
-    }
+    // var _oldParams = Map<String, ASTIdentifier>();
+    // for (var i in function.formalParamaters) {
+    //   if (identifiers.containsKey(i.name)) 
+    //     _oldParams[i.name] = identifiers[i.name];
+    //   else
+    //     _oldParams[i.name] = null;
+    // }
 
     assert(function.formalParamaters.length == arguments.length);
     for (int i = 0; i < function.formalParamaters.length; ++i) {
-      var _val = await getValue( arguments[i] );
-      identifiers[function.formalParamaters[i].name] = ASTIdentifier(
+      // var _val = await getValue( arguments[i] );
+      scope.setInScope(function.formalParamaters[i].name, value: ASTIdentifier(
         name: function.formalParamaters[i].name,
-        value: (await getValue( _val )).value
-      );
+        value: evaluatedArgs[i].value
+      ));
+      
+      // identifiers[function.formalParamaters[i].name] = ASTIdentifier(
+      //   name: function.formalParamaters[i].name,
+      //   value: (await getValue( _val )).value
+      // );
     }
 
     for (var cmd in function.block.blockItems) {
@@ -236,32 +262,39 @@ class Interpret {
       if (returnFlag) { returnFlag = false; break; }
     }
 
+    scope.popScope();
     // restore the old state
-    _oldParams.forEach((key, value) {
-      if (value == null && identifiers.containsKey(key)) identifiers.remove(key);
-      if (value != null) identifiers[key] = value; 
-    });
+    // _oldParams.forEach((key, value) {
+    //   if (value == null && identifiers.containsKey(key)) identifiers.remove(key);
+    //   if (value != null) identifiers[key] = value; 
+    // });
   }
 
   Future runFor(ASTFor forBlock) async {
-    if (!identifiers.containsKey(forBlock.counter.name))
-      identifiers[forBlock.counter.name] = forBlock.counter;
+    scope.pushScopeToCurrent();
 
-    int i;
-    if (forBlock.from is ASTInt) i = forBlock.from.value;
-    else if (forBlock.from is ASTBinOp) i = (await binop(forBlock.from)).value;
-    else if (forBlock.from is ASTIdentifier) 
-      i = identifiers[(forBlock.from as ASTIdentifier).name].value;
+    scope.setInScope(forBlock.counter.name, value: forBlock.counter);
+    // if (!identifiers.containsKey(forBlock.counter.name))
+    //   identifiers[forBlock.counter.name] = forBlock.counter;
+
+    int i = (await getValue(forBlock.from)).value ;
+    // if (forBlock.from is ASTInt) i = forBlock.from.value;
+    // else if (forBlock.from is ASTBinOp) i = (await binop(forBlock.from)).value;
+    // else if (forBlock.from is ASTIdentifier) 
+    //   i = identifiers[(forBlock.from as ASTIdentifier).name].value;
 
     for (;; ++i) {
-      int end;      
-      if (forBlock.to is ASTInt) end = forBlock.to.value;
-      else if (forBlock.to is ASTBinOp) end = (await binop(forBlock.to)).value;
-      else if (forBlock.to is ASTIdentifier) 
-        end = identifiers[(forBlock.to as ASTIdentifier).name].value;
+      int end = (await getValue(forBlock.to)).value ;      
+      // if (forBlock.to is ASTInt) end = forBlock.to.value;
+      // else if (forBlock.to is ASTBinOp) end = (await binop(forBlock.to)).value;
+      // else if (forBlock.to is ASTIdentifier) 
+      //   end = identifiers[(forBlock.to as ASTIdentifier).name].value;
       if (i >= end) break;
 
-      identifiers[forBlock.counter.name].value = i;
+      // identifiers[forBlock.counter.name].value = i;
+
+      scope.setInScope(forBlock.counter.name, 
+        value: ASTIdentifier(name:forBlock.counter.name, value: i));
       
       for (var cmd in forBlock.block.blockItems) {
         if (typeof(cmd) == ASTBreak) break;
@@ -278,9 +311,13 @@ class Interpret {
       }
       if (returnFlag) break;
     }
+
+    scope.popScope();
   }
 
   Future runWhile(ASTWhile whileBlock) async {
+    scope.pushScopeToCurrent();
+
     bool shouldRun = (await getValue(whileBlock.check)).value;
     // bool _isBinOp = (typeof(whileBlock.check) == ASTBinOp);
 
@@ -308,6 +345,8 @@ class Interpret {
       // if (_isBinOp) shouldRun = await binop(whileBlock.check);
       // else shouldRun = (whileBlock.check as ASTBool).value;
     }
+
+    scope.popScope();
   }
 
   Future runCommand(ASTBase cmd) async {
@@ -383,7 +422,8 @@ class Interpret {
 
   Future run(ASTProgram program, {List<int> array}) async {
     this.array = array;
-    this.identifiers['length'] = ASTIdentifier(name: 'length', value: this.array.length);
+    // this.identifiers['length'] = ASTIdentifier(name: 'length', value: this.array.length);
+    scope.setInScope('length', value: ASTIdentifier(name: 'length', value: this.array.length));
 
     for (ASTFunction func in program.functionList)
       functions[func.functionName] = func;

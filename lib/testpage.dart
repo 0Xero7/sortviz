@@ -306,9 +306,10 @@ class MyPainter extends CustomPainter {
       double value = (state.auxillarySet.contains(i) ? state.auxillary[i] : state.array[i] as double);
 
       var paint = linePaint;
+      if (auxillary) paint = auxillaryPaint;
+      
       if (isChecking) paint = checkingPaint;
       else if (swapping) paint = swappingPaint;
-      if (auxillary) paint = auxillaryPaint;
       canvas.drawLine(Offset(left, value / 40), Offset(left, -value), paint);
       left += strokeWidth + 1;
     }

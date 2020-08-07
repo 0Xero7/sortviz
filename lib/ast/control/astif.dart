@@ -3,8 +3,10 @@ import 'package:sortviz/ast/astblock.dart';
 import 'package:sortviz/ast/types/astvalue.dart';
 
 class ASTIf extends ASTBase {
-  ASTValue condition;
+  dynamic condition;
   ASTBlock trueBlock, falseBlock;
 
-  ASTIf({this.condition, this.trueBlock, this.falseBlock});  
+  ASTIf({this.condition, this.trueBlock, this.falseBlock}) {
+    assert(condition is ASTValue);
+  }
 }
