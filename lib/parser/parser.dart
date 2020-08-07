@@ -162,18 +162,33 @@ class Parser {
 
           ++_to;
         }
+
+        var trueBlock = parseBlock(tokens, _from, _to - 2);
+        var falseBlock;
+        i = _to - 1;
+        if (tokens[i + 1] == 'else') {
+          // print('implement me');
+          _from = i + 3;
+          _to = i + 3;
+          int curlyDepth = 1;
+          while (curlyDepth > 0) {
+            if (tokens[_to] == '{') ++curlyDepth;
+            if (tokens[_to] == '}') --curlyDepth;
+
+            ++_to;
+          }
+
+          falseBlock = parseBlock(tokens, _from, _to - 2);
+          i = _to - 1;
+        }
+
         block.blockItems.add(
           ASTIf(
             condition: condition,
-            trueBlock: parseBlock(tokens, _from, _to - 2)
+            trueBlock: trueBlock,
+            falseBlock: falseBlock
           )
         );
-
-        i = _to - 1;
-        if (tokens[i + 1] == 'else') {
-
-        }
-
         continue;
       }
 

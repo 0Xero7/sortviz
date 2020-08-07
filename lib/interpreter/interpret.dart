@@ -192,16 +192,16 @@ class Interpret {
   }
 
   Future runIf(ASTIf ifblock) async {
-    bool cond;
+    bool cond = (await getValue(ifblock.condition)).value;
 
-    switch (typeof(ifblock.condition)) {
-      case ASTBool: 
-        cond = ifblock.condition.value;
-        break;
-      case ASTBinOp:
-        cond = (await binop(ifblock.condition)).value;
-        break;
-    }
+    // switch (typeof(ifblock.condition)) {
+    //   case ASTBool: 
+    //     cond = ifblock.condition.value;
+    //     break;
+    //   case ASTBinOp:
+    //     cond = (await binop(ifblock.condition)).value;
+    //     break;
+    // }
 
     assert(cond != null);
 
@@ -281,11 +281,11 @@ class Interpret {
   }
 
   Future runWhile(ASTWhile whileBlock) async {
-    bool shouldRun = true;
-    bool _isBinOp = (typeof(whileBlock.check) == ASTBinOp);
+    bool shouldRun = (await getValue(whileBlock.check)).value;
+    // bool _isBinOp = (typeof(whileBlock.check) == ASTBinOp);
 
-    if (_isBinOp) shouldRun = (await getValue(whileBlock.check)).value;
-    else shouldRun = (whileBlock.check as ASTBool).value;
+    // if (_isBinOp) shouldRun = (await getValue(whileBlock.check)).value;
+    // else shouldRun = (whileBlock.check as ASTBool).value;
 
     while (shouldRun) {
       for (var cmd in whileBlock.block.blockItems) {
@@ -304,9 +304,9 @@ class Interpret {
       }
       if (returnFlag) break;
 
-      
-      if (_isBinOp) shouldRun = await binop(whileBlock.check);
-      else shouldRun = (whileBlock.check as ASTBool).value;
+      shouldRun = (await getValue(whileBlock.check)).value;
+      // if (_isBinOp) shouldRun = await binop(whileBlock.check);
+      // else shouldRun = (whileBlock.check as ASTBool).value;
     }
   }
 

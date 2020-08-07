@@ -4,7 +4,7 @@ func merge(l, mid, r) {
     ptr = l;
 
     while i <= mid && j <= r {
-        if array.at(i) <= aux.at(j) {
+        if array.at(i) <= array.at(j) {
             aux.set(ptr, array.at(i));
             i = i + 1;
         } else {

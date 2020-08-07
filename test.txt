@@ -1,0 +1,9 @@
+
+func sort() {
+    x = 3;
+    if x == 4 {
+        print 5;
+    } else {
+        print 0;
+    }
+}
