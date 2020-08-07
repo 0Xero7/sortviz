@@ -167,7 +167,7 @@ class Interpret {
             return ASTInt(value: array[_right.value]);
           } else if (_id.name == 'aux') {
             _right = await getValue((op.right as ASTFunctionCall).argument[0]);
-            return ASTInt(value: getAuxAt(_right.value));
+            return ASTInt(value: await getAuxAt(_right.value));
           }
 
           throw Exception('Cannot call "at" on ${_id.name}.');
