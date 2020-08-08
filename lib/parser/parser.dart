@@ -9,6 +9,8 @@ import 'package:sortviz/ast/astidentifier.dart';
 import 'package:sortviz/ast/astprint.dart';
 import 'package:sortviz/ast/astprogram.dart';
 import 'package:sortviz/ast/astreturn.dart';
+import 'package:sortviz/ast/control/astbreak.dart';
+import 'package:sortviz/ast/control/astcontinue.dart';
 import 'package:sortviz/ast/control/astfor.dart';
 import 'package:sortviz/ast/control/astif.dart';
 import 'package:sortviz/ast/control/astwhile.dart';
@@ -208,6 +210,20 @@ class Parser {
         block.blockItems.add(ASTReturn(returnValue: retVal));
 
         i = _toRet;
+        continue;
+      }
+
+      // its a BREAK!
+      if (tokens[i] == 'break') {
+        ++i;
+        block.blockItems.add(ASTBreak());
+        continue;
+      }
+
+      // its a Continue!
+      if (tokens[i] == 'continue') {
+        ++i;
+        block.blockItems.add(ASTContinue());
         continue;
       }
 

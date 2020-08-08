@@ -285,13 +285,16 @@ class Interpret {
     // else if (forBlock.from is ASTIdentifier) 
     //   i = identifiers[(forBlock.from as ASTIdentifier).name].value;
 
-    for (;; ++i) {
+    bool pos = (await getValue(forBlock.to)).value > i;
+
+    for (;; pos ? ++i : --i) {
       int end = (await getValue(forBlock.to)).value ;      
       // if (forBlock.to is ASTInt) end = forBlock.to.value;
       // else if (forBlock.to is ASTBinOp) end = (await binop(forBlock.to)).value;
       // else if (forBlock.to is ASTIdentifier) 
       //   end = identifiers[(forBlock.to as ASTIdentifier).name].value;
-      if (i >= end) break;
+      if (pos && i >= end) break;
+      if (!pos && i <= end) break;
 
       // identifiers[forBlock.counter.name].value = i;
 
@@ -355,11 +358,11 @@ class Interpret {
     switch (cmd.runtimeType) {
       case ASTBreak:
         breakFlag = true;
-        break;
+        return;
       
       case ASTContinue:
         continueFlag = true;
-        break;
+        return;
 
       case ASTReturn:
         // returnFlag = true;
@@ -367,7 +370,7 @@ class Interpret {
         // if (ret.returnValue is ASTVoid) break;
         returnStack.add( await getValue(ret.returnValue) );
         returnFlag = true;
-        break;
+        return;
 
 
 

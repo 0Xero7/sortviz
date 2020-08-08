@@ -24,7 +24,7 @@ class Symbols {
     '!=': 5,
   };
 
-  static Set<String> keywords = { 'func', 'while', 'if', 'for', 'return', 'in', 'print', 'else' };
+  static Set<String> keywords = { 'func', 'while', 'if', 'for', 'return', 'in', 'print', 'else', 'break', 'continue' };
 
   // if something is not a number and not a keyword and not a operator then its a identifier
   static bool isIdentifier(String token) {
