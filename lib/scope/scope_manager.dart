@@ -54,8 +54,22 @@ class ScopeManager {
     throw Exception('Identifier $name not defined.');
   }
 
+  int _getDescendantScopeWhereExists(String name) {
+    int currentID = activeScope;
+
+    while (currentID != -1) {
+      if (scopes[currentID].contains(name)) return currentID;
+      currentID = scopes[currentID].parentId;
+    }
+    return null;
+  }
+
   void setInScope(String name, {ASTIdentifier value}) {
-    scopes[activeScope].setIdentifier(name, value: value);
+    var _scopedQuery = _getDescendantScopeWhereExists(name);
+    _scopedQuery ??= activeScope;
+    
+    scopes[_scopedQuery].setIdentifier(name, value: value);
+    // else _scopedQuery.value = value;
   }
 
   void pushScopeToRoot() {

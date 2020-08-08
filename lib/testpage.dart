@@ -13,7 +13,7 @@ class SortState {
   List<int> array;
   List<int> auxillary;
   HashSet<int> checkingIndices, swappingIndices;
-  HashSet<int> auxillarySet;
+  HashSet<int> auxillarySet, completedSet;
   bool changed = false;
 
   SortState(this.array) {
@@ -21,6 +21,7 @@ class SortState {
     swappingIndices = HashSet<int>();
     auxillary = List<int>(this.array.length);
     auxillarySet = HashSet<int>();
+    completedSet = HashSet<int>();
   }
 }
 
@@ -88,6 +89,7 @@ class _TestPage extends State<TestPage> {
                         setState(() {
                           widget.state.array[i] = Random.secure().nextInt(500);
                           widget.state.auxillarySet.remove(i);
+                          widget.state.completedSet.remove(i);
                         });
                         
                         await Future.delayed(Duration(milliseconds: delay));
@@ -111,7 +113,7 @@ class _TestPage extends State<TestPage> {
                           widget.state.swappingIndices.add(j);
                         });
 
-                        await Future.delayed(const Duration(microseconds: 1));
+                        await Future.delayed(const Duration(microseconds: 0));
 
                         widget.state.swappingIndices.clear();
                       };
@@ -122,7 +124,7 @@ class _TestPage extends State<TestPage> {
                           widget.state.checkingIndices.add(j);
                         });
 
-                        await Future.delayed(const Duration(microseconds: 1));
+                        await Future.delayed(const Duration(microseconds: 0));
                         widget.state.checkingIndices.clear();
                       };
 
@@ -130,9 +132,10 @@ class _TestPage extends State<TestPage> {
                         setState(() {
                           widget.state.swappingIndices.add(index);
                           widget.state.array[index] = value;
+                          widget.state.auxillarySet.remove(index);
                         });
 
-                        await Future.delayed(const Duration(microseconds: 1));
+                        await Future.delayed(const Duration(microseconds: 0));
                         widget.state.swappingIndices.clear();
                       };
                       
@@ -144,12 +147,19 @@ class _TestPage extends State<TestPage> {
                           widget.state.auxillarySet.add(index);
                         });
 
-                        await Future.delayed(const Duration(microseconds: 1));
+                        await Future.delayed(const Duration(microseconds: 0));
                       };
 
                       var interpreter = Interpret();
                       interpreter.init( widget.swap, checking, setMainArrayValue, getAuxAt, setAuxArrayValue );
                       await interpreter.run(t, array: widget.state.array );
+
+                      for (int i = 0; i < widget.state.array.length; ++i) {
+                        setState(() {
+                          widget.state.completedSet.add(i);
+                        });
+                        await Future.delayed(const Duration(microseconds: 1));
+                      }
                     },
                   ),                
                 ],
@@ -169,7 +179,7 @@ class _TestPage extends State<TestPage> {
                   duration: Duration(milliseconds: 200),
                   curve: Curves.easeOutCubic,
 
-                  width: (editorCollapsed ? 50 : 500),
+                  width: (editorCollapsed ? 51 : 500),
                   child: Container(
                     color: Colors.black38,
                     child: Row(
@@ -241,7 +251,7 @@ class MyPainter extends CustomPainter {
     final linePaint = Paint()
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round
-      ..color = Colors.white12
+      ..color = Colors.white24
       ..strokeWidth = strokeWidth;
 
     final checkingPaint = Paint()
@@ -253,7 +263,7 @@ class MyPainter extends CustomPainter {
     final auxillaryPaint = Paint()
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round
-      ..color = Colors.grey.shade400
+      ..color = Colors.white54
       ..strokeWidth = strokeWidth;
 
     final swappingPaint = Paint()
@@ -261,6 +271,13 @@ class MyPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..color = Colors.pink
       ..strokeWidth = strokeWidth;
+
+    final completePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.green.shade600
+      ..strokeWidth = strokeWidth;
+
     
     // 10 stroke and 1 gap
     int totalWidth = state.array.length * (strokeWidth.toInt() + 1);
@@ -268,27 +285,28 @@ class MyPainter extends CustomPainter {
 
     canvas.drawColor(Colors.blueGrey.shade900, BlendMode.color);
 
-    var points = List<Offset>();
-    for (int i = 0; i < state.array.length; ++i) {
-      double value = (state.auxillarySet.contains(i) ? state.auxillary[i] : state.array[i]) as double;
+    // var points = List<Offset>();
+    // for (int i = 0; i < state.array.length; ++i) {
+    //   double value = (state.auxillarySet.contains(i) ? state.auxillary[i] : state.array[i]) as double;
+    //   if (value == null) value = 0;
 
-      points.add(Offset(left, value / 200));
-      points.add(Offset(left, -value-3));
-      points.add(Offset(left + strokeWidth, -value-3));
-      points.add(Offset(left + strokeWidth, value / 200));
-      left += strokeWidth + 1;
-    }
-    points.add(Offset(left, 20));
+    //   points.add(Offset(left, value / 200));
+    //   points.add(Offset(left, -value-3));
+    //   points.add(Offset(left + strokeWidth, -value-3));
+    //   points.add(Offset(left + strokeWidth, value / 200));
+    //   left += strokeWidth + 1;
+    // }
+    // points.add(Offset(left, 20));
 
-    var shadowPaint = Paint()
-                    ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 5)
-                    ..blendMode = BlendMode.colorBurn
-                    ..strokeCap = StrokeCap.round
-                    ..color = Colors.black.withAlpha(16);
+    // var shadowPaint = Paint()
+    //                 ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 5)
+    //                 ..blendMode = BlendMode.colorBurn
+    //                 ..strokeCap = StrokeCap.round
+    //                 ..color = Colors.black.withAlpha(16);
 
-    var path = Path();
-    path.addPolygon(points, false);
-    canvas.drawPath(path, shadowPaint);
+    // var path = Path();
+    // path.addPolygon(points, false);
+    // canvas.drawPath(path, shadowPaint);
 
     // for (int i = 0; i < state.array.length; ++i) {
     //   int value = state.auxillarySet.contains(i) ? state.auxillary[i] : state.array[i];
@@ -306,10 +324,11 @@ class MyPainter extends CustomPainter {
       double value = (state.auxillarySet.contains(i) ? state.auxillary[i] : state.array[i] as double);
 
       var paint = linePaint;
-      if (auxillary) paint = auxillaryPaint;
-      
+      if (auxillary) paint = auxillaryPaint;      
       if (isChecking) paint = checkingPaint;
       else if (swapping) paint = swappingPaint;
+      if (state.completedSet.contains(i)) paint = completePaint;
+
       canvas.drawLine(Offset(left, value / 40), Offset(left, -value), paint);
       left += strokeWidth + 1;
     }

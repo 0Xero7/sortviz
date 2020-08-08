@@ -215,8 +215,10 @@ class Interpret {
 
     assert(cond != null);
 
+    scope.pushScopeToCurrent();
     if (cond == true) await runBlock(ifblock.trueBlock);
     else await runBlock(ifblock.falseBlock);
+    scope.popScope();
   }
 
   Future functionCall(String functionName, List<dynamic> arguments) async {
@@ -294,7 +296,7 @@ class Interpret {
       // identifiers[forBlock.counter.name].value = i;
 
       scope.setInScope(forBlock.counter.name, 
-        value: ASTIdentifier(name:forBlock.counter.name, value: i));
+        value: ASTIdentifier(name: forBlock.counter.name, value: i));
       
       for (var cmd in forBlock.block.blockItems) {
         if (typeof(cmd) == ASTBreak) break;
