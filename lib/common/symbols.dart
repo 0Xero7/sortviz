@@ -27,6 +27,8 @@ class Symbols {
   static Set<String> keywords = { 'func', 'while', 'if', 'for', 'return', 'in', 'print', 'else' };
 
   // if something is not a number and not a keyword and not a operator then its a identifier
-  static bool isIdentifier(String token) => 
-    (token != null && int.tryParse(token) == null && !keywords.contains(token) && !precedence.containsKey(token));
+  static bool isIdentifier(String token) {
+    print(token);
+    return (token != null && int.tryParse(token) == null && !keywords.contains(token) && !precedence.containsKey(token));
+  }
 }
