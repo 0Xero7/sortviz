@@ -57,17 +57,31 @@ class _TestPage extends State<TestPage> {
     return Scaffold(
       body: Stack(
         children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [ Colors.blueGrey.shade900, Colors.blueGrey.shade800 ]
+                )
+              ),
+              // color: Colors.blueGrey.shade900,
+            )
+          ),
+
           Positioned(
             top: 50,
             left: 0,
+            // right: MediaQuery.of(context).size.width * (editorCollapsed ? 0 : .8),
             // right: MediaQuery.of(context).size.width * .25,
             right: 0,
-            bottom: 50,
+            bottom: 5,
             
             child: Align(
-              alignment: Alignment.bottomCenter,
+              alignment: Alignment.bottomLeft,
               child: CustomPaint(
-                painter: MyPainter(widget.state),
+                painter: MyPainter(widget.state, MediaQuery.of(context).size.width * (editorCollapsed ? 1 : .6)),
                 isComplex: true, 
                 willChange: widget.state.changed ,
               ),
@@ -170,49 +184,45 @@ class _TestPage extends State<TestPage> {
           Positioned(
             top: 48,
             // left: MediaQuery.of(context).size.width * ( editorCollapsed ? .9 : .75 ),
+            // right: MediaQuery.of(context).size.width * (editorCollapsed ? 0 : .25),
             right: 0,
-            bottom: 50,
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                child: AnimatedContainer(
-                  duration: Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
+            bottom: 5,
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
 
-                  width: (editorCollapsed ? 51 : 500),
-                  child: Container(
-                    color: Colors.black38,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: double.infinity,
+              width: (editorCollapsed ? 51 : MediaQuery.of(context).size.width * 0.45),
+              child: Container(
+                color: Colors.black38,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: double.infinity,
 
-                          child: FlatButton(
-                            child: Center(child: Icon( editorCollapsed ? Icons.keyboard_arrow_left :  Icons.keyboard_arrow_right )),
-                            onPressed: () {
-                              setState(() {
-                                editorCollapsed = !editorCollapsed;
-                              });
-                            },
-                          ),
-                        ),
-                        Container(width: 1, color: Colors.white12,),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: TextField(
-                              controller: controller,
-                              maxLines: null,
-                              keyboardType: TextInputType.multiline,
-                              expands: true,
-                              style: GoogleFonts.getFont('Fira Mono', fontSize: 16, color: Colors.white)
-                            ),
-                          ),
-                        )
-                      ]
+                      child: FlatButton(
+                        child: Center(child: Icon( editorCollapsed ? Icons.keyboard_arrow_left :  Icons.keyboard_arrow_right )),
+                        onPressed: () {
+                          setState(() {
+                            editorCollapsed = !editorCollapsed;
+                          });
+                        },
+                      ),
                     ),
-                  ),
+                    Container(width: 1, color: Colors.white12,),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: TextField(
+                          controller: controller,
+                          maxLines: null,
+                          keyboardType: TextInputType.multiline,
+                          expands: true,
+                          style: GoogleFonts.getFont('Fira Mono', fontSize: 16, color: Colors.white)
+                        ),
+                      ),
+                    )
+                  ]
                 ),
               ),
             ),
@@ -225,10 +235,10 @@ class _TestPage extends State<TestPage> {
 
             child: ClipRect(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
                 child: Container(
-                  color: Colors.black.withAlpha(60),
-                  height: 50,
+                  color: Colors.blueGrey.shade900.withAlpha(1),
+                  height: 5,
                 ),
               ),
             ),
@@ -242,11 +252,12 @@ class _TestPage extends State<TestPage> {
 
 class MyPainter extends CustomPainter {
   final SortState state;
-  MyPainter(this.state);
+  final double width;
+  MyPainter(this.state, this.width);
 
   @override
   void paint(Canvas canvas, Size size) {
-    double strokeWidth = 7;
+    double strokeWidth = (width - 200 - state.array.length) / (state.array.length);
 
     final linePaint = Paint()
       ..style = PaintingStyle.fill
@@ -280,10 +291,10 @@ class MyPainter extends CustomPainter {
 
     
     // 10 stroke and 1 gap
-    int totalWidth = state.array.length * (strokeWidth.toInt() + 1);
-    double left = -totalWidth / 2;
+    // int totalWidth = state.array.length * (strokeWidth.toInt() + 1);
+    double left = 80;
 
-    canvas.drawColor(Colors.blueGrey.shade900, BlendMode.color);
+    // canvas.drawColor(Colors.blueGrey.shade900, BlendMode.color);
 
     // var points = List<Offset>();
     // for (int i = 0; i < state.array.length; ++i) {
@@ -315,7 +326,7 @@ class MyPainter extends CustomPainter {
     //   left += strokeWidth + 1;
     // }
 
-    left = -totalWidth / 2;
+    // left = -(width / 2) -totalWidth / 2;
     for (int i = 0; i < state.array.length; ++i) {
       bool isChecking = state.checkingIndices.contains(i);
       bool auxillary = state.auxillarySet.contains(i);
@@ -329,7 +340,7 @@ class MyPainter extends CustomPainter {
       else if (swapping) paint = swappingPaint;
       if (state.completedSet.contains(i)) paint = completePaint;
 
-      canvas.drawLine(Offset(left, value / 40), Offset(left, -value), paint);
+      canvas.drawLine(Offset(left, 20), Offset(left, -value), paint);
       left += strokeWidth + 1;
     }
   }
