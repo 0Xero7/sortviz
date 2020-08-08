@@ -52,7 +52,7 @@ class Parser {
 
     for (int i = from; i <= to; ++i) {
       if (tokens[i] == '(') {
-        if (i - 1 >= from && isIdentifier(tokens[i-1])) { // is a function call
+        if (i - 1 >= from && Symbols.isIdentifier(tokens[i-1])) { // is a function call
 
           // get function name
           String functionName = output.removeLast().name;
@@ -97,14 +97,14 @@ class Parser {
       //     op.removeLast();
       //   }
       //   op.removeLast();
-      } else if (!precedence.containsKey(tokens[i])) {
+      } else if (!Symbols.precedence.containsKey(tokens[i])) {
         // is a literal or identifier
         var _int = int.tryParse(tokens[i]);
         if (_int != null) output.add( ASTInt(value: int.parse(tokens[i])) );
         else output.add( ASTIdentifier(name: tokens[i]) );
       } else {
-        int _prec = precedence[tokens[i]];
-        while (op.length > 0 && precedence[op.last.op] > _prec) {
+        int _prec = Symbols.precedence[tokens[i]];
+        while (op.length > 0 && Symbols.precedence[op.last.op] > _prec) {
           var _op = op.removeLast().op;
           var right = output.removeLast();
           var left = output.removeLast();
