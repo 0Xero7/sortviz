@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sortviz/interpreter/interpret.dart';
 import 'package:sortviz/lexer/lexer.dart';
 import 'package:sortviz/parser/parser.dart';
-import 'package:sortviz/test_ast.dart';
+import 'package:http/http.dart' as http;
 
 
 class SortState {
@@ -242,7 +242,9 @@ class _TestPage extends State<TestPage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
                       onPressed: () async {
                         controller.clear();
-                        controller.text = await DefaultAssetBundle.of(context).loadString('bubblesort.txt');
+                        controller.text = (await // dont do this
+                          http.get('https://raw.githubusercontent.com/0Xero7/sortviz/master/assets/bubblesort.txt'))
+                          .body;    
                       },
                     ),
                     const SizedBox(width: 15),
@@ -252,7 +254,9 @@ class _TestPage extends State<TestPage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
                       onPressed: () async {
                         controller.clear();
-                        controller.text = await DefaultAssetBundle.of(context).loadString('insertionsort.txt');
+                        controller.text = (await // flutter web has forces my hand here
+                          http.get('https://raw.githubusercontent.com/0Xero7/sortviz/master/assets/insertionsort.txt'))
+                          .body;                          
                       },
                     ),
                     const SizedBox(width: 15),
@@ -262,7 +266,9 @@ class _TestPage extends State<TestPage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
                       onPressed: () async {
                         controller.clear();
-                        controller.text = await DefaultAssetBundle.of(context).loadString('mergesort.txt');
+                        controller.text = (await 
+                          http.get('https://raw.githubusercontent.com/0Xero7/sortviz/master/assets/mergesort.txt'))
+                          .body;    
                       },
                     ),
                     const SizedBox(width: 15),
@@ -272,7 +278,9 @@ class _TestPage extends State<TestPage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
                       onPressed: () async {
                         controller.clear();
-                        controller.text = await DefaultAssetBundle.of(context).loadString('quicksort.txt');
+                        controller.text = (await 
+                          http.get('https://raw.githubusercontent.com/0Xero7/sortviz/master/assets/quicksort.txt'))
+                          .body;    
                       },
                     ),
                     const SizedBox(width: 15),
