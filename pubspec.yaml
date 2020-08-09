@@ -62,7 +62,11 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   assets:
-    - assets/
+    - assets/bubblesort.txt
+    - assets/insertionsort.txt
+    - assets/mergesort.txt
+    - assets/quicksort.txt
+
   # fonts:
   #   - family: Schyler
   #     fonts:
