@@ -361,13 +361,19 @@ class _TestPage extends State<TestPage> {
 
 class MyPainter extends CustomPainter {
   final SortState state;
-  final double width;
-  MyPainter(this.state, this.width);
+  double width;
+  MyPainter(this.state, double width) { this.width = width - 50; }
 
   @override
   void paint(Canvas canvas, Size size) {
-    double strokeWidth = (width - 200 - state.array.length) / (state.array.length);
+    double padding = width / (1590 / 80);
+    double availableSpace = width - 50 - 2 * padding;
+
+    double strokeWidth = (availableSpace - state.array.length) / (state.array.length);
     if (strokeWidth > 10) strokeWidth = 10;
+
+    double spaceTaken = (strokeWidth + 1) * state.array.length;
+    double left = (width - spaceTaken) / 2;
 
     final linePaint = Paint()
       ..style = PaintingStyle.fill
@@ -402,7 +408,7 @@ class MyPainter extends CustomPainter {
     
     // 10 stroke and 1 gap
     // int totalWidth = state.array.length * (strokeWidth.toInt() + 1);
-    double left = 80;
+    // double left = 80;
 
     // canvas.drawColor(Colors.blueGrey.shade900, BlendMode.color);
 
