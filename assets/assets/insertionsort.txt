@@ -1,0 +1,11 @@
+func sort() {
+    for i in 0..length {
+        for j in i..0 {
+            if array.at(j) < array.at(j - 1) {
+                 array.swap(j, j - 1);
+            } else { 
+                break; 
+            }               
+        }
+    }
+}
