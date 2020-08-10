@@ -20,7 +20,7 @@ jobs:
     - name: Install dependencies
       run: flutter packages get
     - name: Build Web
-      run: flutter build web
+      run: flutter build web --release --dart-define=FLUTTER_WEB_USE_EXPERIMENTAL_CANVAS_TEXT=true
     - name: Deploy
       run: |
         cd build/web
