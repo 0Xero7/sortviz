@@ -11,7 +11,7 @@ jobs:
         java-version: 12.x
     - uses: subosito/flutter-action@v1
       with:
-        flutter-version: 1.19.x
+        flutter-version: 1.20.x
         channel: beta
     - name: Upgrades flutter
       run: flutter upgrade
@@ -20,7 +20,7 @@ jobs:
     - name: Install dependencies
       run: flutter packages get
     - name: Build Web
-      run: flutter build web
+      run: flutter build web --release --dart-define=FLUTTER_WEB_USE_EXPERIMENTAL_CANVAS_TEXT=true
     - name: Deploy
       run: |
         cd build/web
